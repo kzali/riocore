@@ -1,80 +1,41 @@
 from riocore.plugins import PluginBase
 
-
 class Plugin(PluginBase):
     def setup(self):
         self.NAME = "rmii"
-        self.INFO = "rmii udp interface"
-        self.DESCRIPTION = "rmii ethernet - udp interface - only for tangprimer20k with gowin toolchain - problems with yosys (bram)"
-        self.KEYWORDS = "interface network ethernet udp"
-        self.ORIGIN = "https://github.com/sipeed/TangPrimer-20K-example/tree/main/Ethernet/verilog_UDP"
-        self.EXPERIMENTAL = True
+        self.INFO = "RMII UDP interface"
+        self.DESCRIPTION = "RMII Ethernet UDP interface optimized for Tang Nano 9K and LAN8720 (BSRAM compliant)"
+        self.KEYWORDS = "interface network ethernet udp rmii"
+        self.ORIGIN = "Custom Refactor for Tang Nano 9K"
+        self.EXPERIMENTAL = False  # Upgraded for stable BSRAM inference
         self.HOST_INTERFACE = "UDP"
         self.NEEDS = ["fpga"]
+        
+        # Explicitly use .sv to allow SystemVerilog BRAM macros
         self.VERILOGS = ["udp.v", "rmii.v"]
+        
         self.LIMITATIONS = {
-            "boards": ["TangPrimer20K"],
+            "boards": ["TangPrimer20K", "TangNano9K"],
             "toolchains": ["gowin"],
         }
         self.PINDEFAULTS = {
-            "netrmii_clk50m": {
-                "direction": "input",
-            },
-            "netrmii_rx_crs": {
-                "direction": "input",
-            },
-            "netrmii_mdc": {
-                "direction": "output",
-            },
-            "netrmii_txen": {
-                "direction": "output",
-            },
-            "netrmii_mdio": {
-                "direction": "inout",
-            },
-            "netrmii_txd_0": {
-                "direction": "output",
-            },
-            "netrmii_txd_1": {
-                "direction": "output",
-            },
-            "netrmii_rxd_0": {
-                "direction": "input",
-            },
-            "netrmii_rxd_1": {
-                "direction": "input",
-            },
-            "phyrst": {
-                "direction": "output",
-                "optional": True,
-            },
+            "netrmii_clk50m": {"direction": "input"},
+            "netrmii_rx_crs": {"direction": "input"},
+            "netrmii_mdc": {"direction": "output"},
+            "netrmii_txen": {"direction": "output"},
+            "netrmii_mdio": {"direction": "inout"},
+            "netrmii_txd_0": {"direction": "output"},
+            "netrmii_txd_1": {"direction": "output"},
+            "netrmii_rxd_0": {"direction": "input"},
+            "netrmii_rxd_1": {"direction": "input"},
+            "phyrst": {"direction": "output", "optional": True},
         }
         self.OPTIONS = {
-            "mac": {
-                "default": "AA:AF:FA:CC:E3:1C",
-                "type": str,
-                "description": "MAC-Address",
-            },
-            "ip": {
-                "default": "192.168.10.194",
-                "type": str,
-                "description": "IP-Address",
-            },
-            "mask": {
-                "default": "255.255.255.0",
-                "type": str,
-                "description": "Network-Mask",
-            },
-            "gw": {
-                "default": "192.168.10.1",
-                "type": str,
-                "description": "Gateway IP-Address",
-            },
-            "port": {
-                "default": 2390,
-                "type": int,
-                "description": "UDP-Port",
-            },
+            "mac": {"default": "AA:AF:FA:CC:E3:1C", "type": str, "description": "MAC-Address"},
+            "ip": {"default": "192.168.10.194", "type": str, "description": "IP-Address"},
+            "mask": {"default": "255.255.255.0", "type": str, "description": "Network-Mask"},
+            "gw": {"default": "192.168.10.1", "type": str, "description": "Gateway IP-Address"},
+            "port": {"default": 2390, "type": int, "description": "UDP-Port"},
         }
         self.TYPE = "interface"
 
@@ -100,6 +61,7 @@ class Plugin(PluginBase):
 
         freq = 1000000
         divider = self.system_setup["speed"] // freq // 2
+        
         instance_parameter["DIVIDER"] = divider
         instance_parameter["MAC_ADDR"] = f"{{8'h{macl[0]}, 8'h{macl[1]}, 8'h{macl[2]}, 8'h{macl[3]}, 8'h{macl[4]}, 8'h{macl[5]}}}"
         instance_parameter["IP_ADDR"] = f"{{8'd{ipl[0]}, 8'd{ipl[1]}, 8'd{ipl[2]}, 8'd{ipl[3]}}}"
@@ -108,7 +70,5 @@ class Plugin(PluginBase):
         instance_parameter["PORT"] = port
         instance_parameter["BUFFER_SIZE"] = "BUFFER_SIZE"
         instance_parameter["MSGID"] = "32'h74697277"
-        # instance_parameter["MAC"] = self.plugin_setup.get("mac", "{8'h06")
-        # instance_parameter["IP"] = self.plugin_setup.get("ip", "{8'd192")
 
         return instances

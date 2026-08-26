@@ -1,4 +1,3 @@
-
 module rmii
     #(
          parameter BUFFER_SIZE=16'd64,
@@ -8,7 +7,7 @@ module rmii
          parameter GW_ADDR={8'd192, 8'd168, 8'd10, 8'd1},
          parameter MAC_ADDR={8'hAA, 8'hAF, 8'hFA, 8'hCC, 8'hE3, 8'h1C},
          parameter PORT=2390,
-         parameter DIVIDER=27
+         parameter DIVIDER=27 // Baseline for TangNano9K 27MHz
     )
     (
         input clk,
@@ -27,6 +26,7 @@ module rmii
         input netrmii_rxd_1
     );
 
+    // Tang Nano 9K specific soft-reset (1 sec delay at 27MHz)
     reg soft_rst = 0;
     reg [31:0] rst_counter = 0;
     always @(posedge clk) begin
@@ -37,6 +37,7 @@ module rmii
         end
     end
 
+    // 1MHz MDC Clock Generation
     reg clk1m = 0;
     reg [31:0] m1_counter = 0;
     always @(posedge clk) begin
@@ -51,28 +52,27 @@ module rmii
     reg [BUFFER_SIZE-1:0] tx_data_buffer;
     reg [BUFFER_SIZE-1:0] rx_data_buffer;
 
-	wire clk50m;
-	wire ready;
-	wire eth_rx_head_av;
-	wire [31:0] eth_rx_head;
-	wire eth_rx_data_av;
-	wire [7:0] eth_rx_data;
-	reg eth_rx_head_rdy;
-	reg [31:0] eth_tx_ip;
-	reg [15:0] eth_tx_dst_port;
-	reg eth_tx_req;
-	reg [7:0] eth_tx_data;
-	reg eth_tx_data_av;
-	wire eth_tx_req_rdy;
-	wire eth_tx_data_rdy;
+    wire clk50m;
+    wire ready;
+    wire eth_rx_head_av;
+    wire [31:0] eth_rx_head;
+    wire eth_rx_data_av;
+    wire [7:0] eth_rx_data;
+    reg eth_rx_head_rdy;
+    reg [31:0] eth_tx_ip;
+    reg [15:0] eth_tx_dst_port;
+    reg eth_tx_req;
+    reg [7:0] eth_tx_data;
+    reg eth_tx_data_av;
+    wire eth_tx_req_rdy;
+    wire eth_tx_data_rdy;
 
     udp #(
         .ip_adr(IP_ADDR),
         .mac_adr(MAC_ADDR),
-
-        .arp_refresh_interval(50000000*15), // 15 seconds    
-        .arp_max_life_time(50000000*30) // 30 seconds
-    )udp_inst(
+        .arp_refresh_interval(50000000*15),    
+        .arp_max_life_time(50000000*30) 
+    ) udp_inst (
         .clk1m(clk1m),
         .rst(soft_rst),
         .clk50m(clk50m),
@@ -108,7 +108,7 @@ module rmii
     reg [7:0] eth_rx_counter = 8'd0;
     reg [7:0] eth_tx_counter = 8'd0;
 
-	always @(posedge clk50m or negedge ready) begin
+    always @(posedge clk50m or negedge ready) begin
         if (ready == 0) begin
             eth_tx_state <= 4'd0;
             eth_rx_state <= 4'd0;
@@ -116,22 +116,17 @@ module rmii
             eth_tx_counter <= 8'd0;
             eth_tx_req <= 0;
         end else begin
-            // rx data
+            // RX Data Processing
             if (eth_rx_data_av) begin
-                // receive data
                 rx_data_buffer <= {rx_data_buffer[BUFFER_SIZE-1-8:0], eth_rx_data};
                 eth_rx_counter <= eth_rx_counter + 8'd1;
             end else begin
-                // wait for end of rx
                 if (eth_rx_state == 4'd4) begin
-                    // check and save rx data
                     if (rx_data_buffer[BUFFER_SIZE-1:BUFFER_SIZE-32] == MSGID) begin
                         rx_data <= rx_data_buffer;
                         sync <= 1;
-                        // trigger next tx
                         eth_tx_state <= 4'd1;
                     end
-                    // ready for next rx
                     eth_rx_state <= 4'd0;
                     eth_rx_counter <= 8'd0;
                 end else begin
@@ -139,10 +134,9 @@ module rmii
                 end
             end
 
-            // receive
+            // RX State Machine
             case(eth_rx_state)
-                0:begin
-                    // wait for header
+                0: begin
                     if (eth_rx_head_av) begin
                         eth_rx_head_rdy <= 1'b1;
                         eth_rx_state <= 4'd1;
@@ -150,17 +144,14 @@ module rmii
                         eth_rx_head_rdy <= 1'b0;
                     end
                 end
-                1:begin
-                    // read ip from header
+                1: begin
                     eth_tx_ip <= eth_rx_head;
                     eth_rx_state <= 4'd2;
                 end
-                2:begin
-                    // read ??? from header
+                2: begin
                     eth_rx_state <= 4'd3;
                 end
-                3:begin
-                    // read port from header
+                3: begin
                     if (eth_rx_head[15:0] == PORT) begin
                         eth_tx_dst_port <= eth_rx_head[31:16];
                         eth_rx_state <= 4'd4;
@@ -168,28 +159,22 @@ module rmii
                         eth_rx_state <= 4'd0;
                     end
                 end
-                4:begin
-                    // wait for data received
+                4: begin
                 end
             endcase
 
-
-            // transmit
+            // TX State Machine
             case(eth_tx_state)
-                0:begin
-                    // wait for trigger by new rx package
+                0: begin
                 end
-                1:begin
-                    // wait for tx ready
+                1: begin
                     if (eth_tx_req_rdy) begin
-                        // set data to transmit
                         eth_tx_counter <= 8'd0;
                         tx_data_buffer <= tx_data;
                         eth_tx_state <= 4'd2;
                     end
                 end
-                2:begin
-                    // send data
+                2: begin
                     if (eth_tx_counter <= (BUFFER_SIZE-1) / 8) begin
                         eth_tx_data_av <= 1;
                         eth_tx_data <= tx_data_buffer[BUFFER_SIZE-1:BUFFER_SIZE-1-7];
@@ -200,20 +185,17 @@ module rmii
                         eth_tx_state <= 4'd3;
                     end
                 end
-                3:begin
-                    // start transmit
+                3: begin
                     if (eth_tx_req_rdy) begin
                         eth_tx_req <= 1'b1;
                         eth_tx_state <= 4'd4;
                     end
                 end
-                4:begin
-                    // transmit done
+                4: begin
                     eth_tx_req <= 1'b0;
                     eth_tx_state <= 4'd0;
                 end
             endcase
         end
     end
-
 endmodule

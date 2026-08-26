@@ -4,7 +4,7 @@ The `rmii` plugin provides a direct, low-latency UDP network interface for `rioc
 
 This plugin is designed to bypass the traditional SPI bottlenecks associated with modules like the W5500, leveraging the FPGA's internal logic to handle the MAC and UDP state machines directly.
 
-![LAN8720 ETH Board](lan8720-eth-board.png)
+![LAN8720 ETH Board](image.png)
 *(Standard LAN8720 RMII Breakout Board)*
 
 ---

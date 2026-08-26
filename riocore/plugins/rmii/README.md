@@ -9,7 +9,7 @@ This plugin is designed to bypass the traditional SPI bottlenecks associated wit
 
 ---
 
-## 🚀 Key Advantages of this Refactor
+## Key Advantages of this Refactor
 
 This version of the RMII plugin has been heavily optimized for resource-constrained FPGAs like the Gowin GW1NR-9 architecture.
 
@@ -20,7 +20,7 @@ This version of the RMII plugin has been heavily optimized for resource-constrai
 
 ---
 
-## 🛠️ Hardware Setup & Wiring
+Hardware Setup & Wiring
 
 This plugin expects a standard 3.3V RMII PHY, such as the **LAN8720**. 
 
